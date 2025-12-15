@@ -1068,6 +1068,29 @@ def recreate_workday(employee, date):
 
 @frappe.whitelist()    
 def recreate_workday_on_checkin_update(checkin, method):
+
 	"""Recreate workday if log type is chekout"""
-	frappe.log_error("recreate_workday_on_checkin_update ", checkin.employee)
-	recreate_workday(checkin.employee, checkin.time)
+	try:
+		recreate_workday(checkin.employee, checkin.time)
+		frappe.msgprint(f"Workday aktualisiert: {checkin.time}")
+	except Exception as e:
+		frappe.log_error("Recreate Workday on Checkin Update Error: {}".format(str(e)), "Recreate Workday on Checkin Update Error")
+
+@frappe.whitelist()
+def recreate_workday_on_leave_application(leave_application, method):
+
+	"""Recreate workday on leave application submit/cancel"""
+	today = frappe.utils.getdate(frappe.utils.nowdate())
+	start_day = frappe.utils.getdate(leave_application.from_date)
+	end_day = frappe.utils.getdate(leave_application.to_date)
+
+	current = start_day
+
+	while current <= end_day:
+		if current <= today:
+			try:
+				recreate_workday(leave_application.employee, current)
+				frappe.msgprint(f"Workday aktualisiert: {current}")
+			except Exception as e:
+				frappe.log_error("Recreate Workday on Leave Application Error: {}".format(str(e)), "Recreate Workday on Leave Application Error")
+		current = frappe.utils.add_days(current, 1)

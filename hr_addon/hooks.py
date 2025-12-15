@@ -25,10 +25,18 @@ required_apps = ["hrms"]
 
 doc_events = {
 	"Leave Application": {
-		"on_change": "hr_addon.hr_addon.doctype.hr_addon_settings.hr_addon_settings.export_calendar",
-		"on_cancel": "hr_addon.hr_addon.doctype.hr_addon_settings.hr_addon_settings.export_calendar"
+		# feat: recreate workday on leave application submit/cancel
+		"on_change": [
+			"hr_addon.hr_addon.doctype.workday.workday.recreate_workday_on_leave_application",
+			"hr_addon.hr_addon.doctype.hr_addon_settings.hr_addon_settings.export_calendar"
+		],
+		"on_cancel": [
+			"hr_addon.hr_addon.doctype.workday.workday.recreate_workday_on_leave_application",
+			"hr_addon.hr_addon.doctype.hr_addon_settings.hr_addon_settings.export_calendar"
+		],
 	},
     "Employee Checkin": {
+		# feat: recreate workday on checkin/out, 
 		"on_update": "hr_addon.hr_addon.doctype.workday.workday.recreate_workday_on_checkin_update",
 	}
 }

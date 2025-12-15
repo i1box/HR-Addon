@@ -120,6 +120,7 @@ var get_hours = function(frm){
 					frm.set_value("first_checkin",employee_checkins[0].time);
 					frm.set_value("last_checkout",employee_checkins[employee_checkins.length-1].time);
 					$.each(employee_checkins ,function(i,e){
+						console.log(e)
 						let nw_checkins = frm.add_child("employee_checkins");
 						nw_checkins.employee_checkin = e.name;
 						nw_checkins.log_type = e.log_type;

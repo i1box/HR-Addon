@@ -1,7 +1,11 @@
 // Copyright (c) 2022, phamos.eu and contributors
 // For license information, please see license.txt
 /* eslint-disable */
-
+// show full month by default
+// show last month info until 15th of current month
+showLastMonth = frappe.datetime.get_day_diff(frappe.datetime, frappe.datetime.month_start()) < 15 ? true : false;
+fromdate = showLastMonth ? frappe.datetime.add_months(frappe.datetime.month_start(),-1) : frappe.datetime.month_start();
+todate = moment(fromdate).endOf("month").format();
 frappe.query_reports["Work Hour Report"] = {
 	"filters": [
 		{
@@ -15,7 +19,7 @@ frappe.query_reports["Work Hour Report"] = {
 			"fieldname":"date_from_filter",
 			"label": __("From Date"),
 			"fieldtype": "Date",
-			"default": frappe.datetime.get_day_diff(frappe.datetime, frappe.datetime.month_start()) < 15 ? frappe.datetime.add_months(frappe.datetime.month_start(),-1) : frappe.datetime.month_start(),
+			"default": fromdate,
 			"reqd": 1,
 			"width": "35px"
 		},
@@ -23,7 +27,7 @@ frappe.query_reports["Work Hour Report"] = {
 			"fieldname":"date_to_filter",
 			"label": __("To Date"),
 			"fieldtype": "Date",
-			"default": frappe.datetime.get_day_diff(frappe.datetime, frappe.datetime.month_start()) < 15 ? frappe.datetime.add_months(frappe.datetime.month_end(),-1) : frappe.datetime.get_today(),
+			"default": todate,
 			"reqd": 1,
 			"width": "35px"
 		},
@@ -47,11 +51,11 @@ frappe.query_reports["Work Hour Report"] = {
 		const css = `
 		<style>
 			/* show all */
-			.datatable {
-				max-height: calc(100vh - 260px);
-				display: flex;
-    			flex-direction: column;
-			}
+			// .datatable {
+			// 	max-height: calc(100vh - 300px);
+			// 	display: flex;
+    		// 	flex-direction: column;
+			// }
 			.dt-header {
 			    position: sticky;
 				top: 0;
@@ -69,7 +73,7 @@ frappe.query_reports["Work Hour Report"] = {
 				top: 0 !important;
 			}
 			.datatable .dt-scrollable {
-				height: 100% !important;
+				height: auto !important;
 				max-height: none !important;
 			}
 		</style>`;
@@ -104,6 +108,11 @@ frappe.query_reports["Work Hour Report"] = {
 				let dStart = frappe.datetime.add_months(d1, 1)
 				self.setDateRange(dStart);
 			})
+		
+		setTimeout(() => {
+			report.refresh();
+			$('[data-fieldname=employee_id]').focus()
+		}, 1000);
 	},
 	setDateRange: function(dStart) {
 		this.report.set_filter_value("date_from_filter", dStart)
@@ -111,6 +120,20 @@ frappe.query_reports["Work Hour Report"] = {
 	},
 	"formatter": function (value, row, column, data, default_formatter) {
 		value = default_formatter(value, row, column, data);
+
+		// if working hours less than target hours, color red
+		let bg = "";
+		if (data && data.total_target_seconds && data.total_target_seconds + data.actual_diff_log < 3600) {
+			//console.log(data);
+			bg = "background-color: #ffcccc"; // red
+		}
+
+		if (column.fieldname == "status" ) {
+			if (bg != "") {
+				value = "<div style='" + bg + "'></div>";
+			}
+		}
+		
 		if (column.fieldname == "total_work_seconds" ) {
 			if(value < 0) {
 				value = "<span style='color:red'>" + hitt(value) + "</span>";
@@ -135,13 +158,17 @@ frappe.query_reports["Work Hour Report"] = {
 		}
 		if (column.fieldname == "actual_working_seconds" ) {
 			if(value < 0) {
+<<<<<<< HEAD
 				value = "<span style='color:red'>" +'-' + hitt(value ,true) + "</span>";
+=======
+				value = "<span style='color:red;" + bg + "'>" + hitt(value) + "</span>";
+>>>>>>> 699ce2f (upd. autom. update workday)
 			}
 			else if(value > 0){
 				value = "<span style='color:green'>" + hitt(value) + "</span>";
 			}
 			else{
-				value = hitt(value);
+				value = "<div style='" + bg + "'>" + hitt(value) + "</div>";
 			}
 		}
 		if (column.fieldname == "total_target_seconds" ) {
@@ -163,8 +190,12 @@ frappe.query_reports["Work Hour Report"] = {
 		}
 		if (column.fieldname == "actual_diff_log" ) {
 			if(value < 0) {
+<<<<<<< HEAD
 				// value = "<span style='color:#FF8C00'>" + hitt(value,true) + "</span>";
 				value = "<span style='color:red'>" +"-"+ hitt(value,true) + "</span>";
+=======
+				value = "<div style='color:#FF8C00;" + bg + "'>" + hitt(value,true) + "</div>";
+>>>>>>> 699ce2f (upd. autom. update workday)
 			}
 			else if(value > 0){
 				value = "<span style='color:blue'>" + hitt(value,true) + "</span>";
