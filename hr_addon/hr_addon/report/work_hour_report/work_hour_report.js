@@ -46,41 +46,16 @@ frappe.query_reports["Work Hour Report"] = {
 			"width": "35px"
 		}
 	],
-	onload: function(report) {
-		// console.log("onload", report)
-		const css = `
-		<style>
-			/* show all */
-			// .datatable {
-			// 	max-height: calc(100vh - 300px);
-			// 	display: flex;
-    		// 	flex-direction: column;
-			// }
-			.dt-header {
-			    position: sticky;
-				top: 0;
-				z-index: 1;
-				background: inherit;
-			}
-			.dt-footer {
-			    position: sticky;
-				bottom: 0;
-				z-index: 1;
-				background: inherit;
-			}
-			.datatable .dt-row {
-				position: relative !important;
-				top: 0 !important;
-			}
-			.datatable .dt-scrollable {
-				height: auto !important;
-				max-height: none !important;
-			}
-		</style>`;
-        if (!$("style#custom-report-style").length) {
-            $(css).attr("id", "custom-report-style").appendTo("head");
+	"onload_post_render": function(report) {
+        // optional: nach Rendern noch einmal anpassen
+        const wrapper = report.page.wrapper.querySelector(".report-wrapper .grid-container");
+        if (wrapper) {
+            wrapper.style.height = "600px";
         }
+    },
 
+	onload: function(report) {
+		// Zugriff auf das DataTable-Wrapper-Element
 		this.report = report;
 		self = this;
 
@@ -88,7 +63,21 @@ frappe.query_reports["Work Hour Report"] = {
 		const f3 = report.get_filter("employee_id")
 		const $b = $('<button type="button" class="btn btn-sm position-absolute end-0 top-0" style="top: 0;right: 0;"><svg class="icon  icon-xs" style="" aria-hidden="true"><use class="" href="#icon-select"></use></svg></button>')
 		$b.insertAfter(f3.$input)
-		$b.off("click.a").on("click.a", function(){ f3.$input.val("").trigger("focus").trigger("input") })
+		let last = f3.$input.val();
+		$b.off("click.a").on("click.a", function() { 
+			last = f3.$input.val() || last;
+			f3.$input.prop("placeholder", last);
+			f3.$input.val("").trigger("focus").trigger("input");
+		 })
+		f3.$input.off("blur.once").on("blur.once", function(){
+			if (f3.$input.val() == "") {
+				// direct restore not working	
+				setTimeout(() => {
+					f3.$input.val(last);
+					report.refresh();
+				}, 1);
+			}
+		})
 		// --
 
 		const fback = report.get_filter("prev_month")
@@ -110,8 +99,9 @@ frappe.query_reports["Work Hour Report"] = {
 			})
 		
 		setTimeout(() => {
-			report.refresh();
-			$('[data-fieldname=employee_id]').focus()
+			if (! f3.$input.val()) {
+				$('[data-fieldname=employee_id]').focus()
+			}
 		}, 1000);
 	},
 	setDateRange: function(dStart) {
