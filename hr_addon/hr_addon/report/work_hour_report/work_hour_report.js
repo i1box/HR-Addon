@@ -1,6 +1,25 @@
 // Copyright (c) 2022, phamos.eu and contributors
 // For license information, please see license.txt
 /* eslint-disable */
+
+// Add CSS dynamically
+$("<style>")
+	.prop("type", "text/css")
+	.html(`
+		.datatable .dt-scrollable {
+			max-height: unset !important;
+			height: 100% !important;
+			overflow: unset !important;
+			display: flex !important;
+			flex-direction: column !important;
+		}
+		.datatable .dt-scrollable div {
+			position: unset !important;
+			top: unset !important;
+		}
+	`)
+	.appendTo("head");
+	
 // show full month by default
 // show last month info until 15th of current month
 showLastMonth = frappe.datetime.get_day_diff(frappe.datetime, frappe.datetime.month_start()) < 15 ? true : false;
@@ -60,25 +79,43 @@ frappe.query_reports["Work Hour Report"] = {
 		self = this;
 
 		// add a button to open the employee list to see all options
-		const f3 = report.get_filter("employee_id")
+		const employee_filter = report.get_filter("employee_id")
 		const $b = $('<button type="button" class="btn btn-sm position-absolute end-0 top-0" style="top: 0;right: 0;"><svg class="icon  icon-xs" style="" aria-hidden="true"><use class="" href="#icon-select"></use></svg></button>')
-		$b.insertAfter(f3.$input)
-		let last = f3.$input.val();
+		$b.insertAfter(employee_filter.$input)
+		let last = employee_filter.$input.val();
+
+		// on opener click, clear input and focus
+		// user can still click into the input to edit
 		$b.off("click.a").on("click.a", function() { 
-			last = f3.$input.val() || last;
-			f3.$input.prop("placeholder", last);
-			f3.$input.val("").trigger("focus").trigger("input");
+			last = employee_filter.$input.val() || last;
+			employee_filter.$input.prop("placeholder", last);
+			employee_filter.$input.val("").trigger("focus").trigger("input");
 		 })
-		f3.$input.off("blur.once").on("blur.once", function(){
-			if (f3.$input.val() == "") {
-				// direct restore not working	
-				setTimeout(() => {
-					f3.$input.val(last);
-					report.refresh();
-				}, 1);
+		// if input is left empty, restore last value
+		employee_filter.$input.off("blur.once").on("blur.once", function(e,f){
+			if (employee_filter.$input.val() == "") {
+				//employee_filter.set_input_value(last);
+				report.set_filter_value("employee_id", last);
 			}
 		})
 		// --
+
+
+        const set_description = () => {
+            const val = employee_filter.get_value(); // die ID
+            const item = employee_filter.awesomplete?.get_item(val);
+            if(item && item.description) {
+				$(".page-head .title-text").text( $(".page-head .title-text").prop("title")+ " - " + item.description);
+                // try to set description in input without breaking validation and touching filter value
+				// extra input field needed to show user name (description) and handle user input
+				//employee_filter.$input.val(item.description);
+            }
+        };
+
+        // Beim Auswählen eines Items
+        employee_filter.$input.on("awesomplete-select", () => {
+            setTimeout(set_description, 5);
+        });
 
 		const fback = report.get_filter("prev_month")
 		fback.$input
@@ -99,10 +136,13 @@ frappe.query_reports["Work Hour Report"] = {
 			})
 		
 		setTimeout(() => {
-			if (! f3.$input.val()) {
+			if (! employee_filter.$input.val()) {
 				$('[data-fieldname=employee_id]').focus()
+			} else {
+
+				report.refresh();
 			}
-		}, 1000);
+		}, 500);
 	},
 	setDateRange: function(dStart) {
 		this.report.set_filter_value("date_from_filter", dStart)
