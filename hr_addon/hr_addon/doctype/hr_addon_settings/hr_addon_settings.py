@@ -14,19 +14,15 @@ from hr_addon.hr_addon.doctype.workday.workday import create_background_job_for_
 
 
 class HRAddonSettings(Document):
+
 	def before_save(self):
 		# remove the old ics file
 		old_doc = self.get_doc_before_save()
 		if old_doc:
 			old_file_name = old_doc.name_of_calendar_export_ics_file
 			if old_file_name != self.name_of_calendar_export_ics_file:
-<<<<<<< HEAD
 				if os.path.exists("{}/public/files/{}.ics".format(frappe.utils.get_site_path(), old_file_name)):
 					os.remove("{}/public/files/{}.ics".format(frappe.utils.get_site_path(), old_file_name))
-=======
-                if os.path.exists("{}/public/files/{}.ics".format(frappe.utils.get_site_path(), old_file_name)):
-				    os.remove("{}/public/files/{}.ics".format(frappe.utils.get_site_path(), old_file_name))
->>>>>>> a7714af (fix. exists ics, upd. report cols)
 
 		# remove also the Urlaubskalender.ics, if exist
 		if os.path.exists("{}/public/files/Urlaubskalender.ics".format(frappe.utils.get_site_path())):
@@ -34,6 +30,19 @@ class HRAddonSettings(Document):
 	
 	def validate(self):
 		self.create_background_job_if_not_exists()
+
+	def before_save(self):
+		# remove the old ics file
+		old_doc = self.get_doc_before_save()
+		if old_doc:
+			old_file_name = old_doc.name_of_calendar_export_ics_file
+			if old_file_name != self.name_of_calendar_export_ics_file:
+				if os.path.exists("{}/public/files/{}.ics".format(frappe.utils.get_site_path(), old_file_name)):
+					os.remove("{}/public/files/{}.ics".format(frappe.utils.get_site_path(), old_file_name))
+
+		# remove also the Urlaubskalender.ics, if exist
+		if os.path.exists("{}/public/files/Urlaubskalender.ics".format(frappe.utils.get_site_path())):
+			os.remove("{}/public/files/Urlaubskalender.ics".format(frappe.utils.get_site_path()))
 
 	def create_background_job_if_not_exists(self):
 		create_background_job_for_workday_generation(self)
