@@ -14,8 +14,34 @@ frappe.ui.form.on('Workday', {
 		});
 	},
 
-	attendance: function(frm){
-		get_hours(frm)
+	refresh: function(frm) {
+
+		frm.add_custom_button(__('Recreate workday'), function() {
+			// @todo add option for recreate and max age
+			const logDate = frappe.datetime.str_to_obj(frm.doc.log_date);
+			const twoMonthsAgo = frappe.datetime.add_months(frappe.datetime.get_today(), -2);
+			if (logDate < frappe.datetime.str_to_obj(twoMonthsAgo)) {
+				frappe.throw(__('Log Date must not be older than 2 months: > {0}', [twoMonthsAgo]));
+			}
+
+			frappe.confirm(__('Are you sure you want to recreate this workday?'), function() {
+				frappe.call({
+					method: "hr_addon.hr_addon.doctype.workday.workday.recreate_workday",
+					args: {
+						employee: frm.doc.employee,
+						date: frm.doc.log_date
+					},
+					callback: function(r) {
+						if (r.message) {
+							frappe.msgprint(__(r.message.message));
+						}
+						if (r.message.redirect) {
+							frappe.set_route('Form', "Workday", r.message.redirect);
+						}
+					}
+				});
+			});
+		});
 	},
 
 	log_date: function(frm){
@@ -27,11 +53,11 @@ frappe.ui.form.on('Workday', {
 					date: frm.doc.log_date
 				},
 				callback: function(r){
-					if (r.message == true){
-						frappe.msgprint("Given Date is Holiday")
-						unset_fields(frm);
-					} else {
+					if (r.message == false){
 						get_hours(frm);
+					} else {
+						frappe.msgprint("Given Date is Holiday: " + r.message[0]["description"]);
+						unset_fields(frm);
 					}
 				}
 			})
@@ -49,6 +75,8 @@ frappe.ui.form.on('Workday', {
 	},
 
 	attendance: function(frm){
+		//get_hours(frm)
+		
 		if (frm.doc.employee_checkins && frm.doc.attendance){
 			frappe.call({
 				method: "hr_addon.hr_addon.doctype.workday.workday.set_attendance_in_employee_checkins",

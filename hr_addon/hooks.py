@@ -27,10 +27,16 @@ doc_events = {
 	"Leave Application": {
 		"on_change": "hr_addon.hr_addon.doctype.hr_addon_settings.hr_addon_settings.export_calendar",
 		"on_cancel": "hr_addon.hr_addon.doctype.hr_addon_settings.hr_addon_settings.export_calendar"
+	},
+    "Employee Checkin": {
+		"on_update": "hr_addon.hr_addon.doctype.workday.workday.recreate_workday_on_checkin_update",
 	}
 }
 
 scheduler_events = {
+	"hourly": [
+		"hr_addon.hr_addon.doctype.workday.workday.generate_workdays_scheduled_job"
+	],
 	"yearly": [
 		"hr_addon.hr_addon.doctype.weekly_working_hours.weekly_working_hours.set_from_to_dates",
 	],

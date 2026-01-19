@@ -9,8 +9,10 @@ from frappe.query_builder import Case, Order
 def execute(filters=None):
 	columns = get_columns()
 	data = get_data(filters)
+	message = None
+	chart = {"sorting":[["log_date","asc"]]}
 
-	return columns, data
+	return columns, data, message, chart
 
 
 def get_data(filters):
@@ -63,17 +65,18 @@ def get_data(filters):
 
 def get_columns():
 	return [		
-		{'fieldname':'log_date','label':'Date','width':110},		
-		{'fieldname':'name','label':'Work Day',  "fieldtype": "Link", "options": "Workday", 'width':200,},		
+		{'fieldname':'name','label':'Work Day',  "fieldtype": "Link", "options": "Workday", 'width':200},		
+		# {'fieldname':'log_date','label':'Date','width':110},
 		{'fieldname':'status','label':'Status', "width": 80},
-		{'fieldname':'total_work_seconds','label':_('Work Hours'), "width": 110, },
-		# {'fieldname':'total_break_seconds','label':_('Break Hours'), "width": 110, },
-		{'fieldname':'expected_break_hours','label':'Expected Break Hours','width':80},
+		{'fieldname':'total_target_seconds','label':_('Target Hours'), "width": 90, },
+		{'fieldname':'total_work_seconds','label':_('Work Hours'), "width": 90, },
 		{'fieldname':'actual_working_seconds','label':_('Actual Working Hours'), "width": 110, },
 		# {'fieldname':'total_target_seconds','label':'Target Hours','width':130},
 		# {'fieldname':'diff_log','label':'Diff (Work Hours - Target Seconds)','width':90},
-		{'fieldname':'actual_diff_log','label':'Diff (Actual Working Hours - Target Seconds)','width':90},
-		{'fieldname':'first_in','label':'First Checkin','width':100},
-		{'fieldname':'last_out','label':'Last Checkout','width':100},
-		{'fieldname':'attendance','label':'Attendance','width': 160},
+		{'fieldname':'actual_diff_log','label':'Diff (Act. Working H. - Target H.)','width':90},
+		{'fieldname':'total_break_seconds','label':_('Break Hours'), "width": 70, },
+		{'fieldname':'expected_break_hours','label':'Expected Break Hours','width':70},
+		{'fieldname':'first_in','label':'First Checkin','width':90},
+		{'fieldname':'last_out','label':'Last Checkout','width':90},
+		#{'fieldname':'attendance','label':'Attendance','width': 160},
 	]

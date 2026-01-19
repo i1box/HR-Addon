@@ -1,5 +1,10 @@
 frappe.listview_settings['Workday'] = {
 	add_fields: ["status"],
+	reqDayRange: false, // for some reason checkbox onchange is fired twice
+	existingDays: 0,
+	newDays: 0,
+	list_view: null,
+
 	get_indicator: function (doc) {
 		if (["Present", "Work From Home"].includes(doc.status)) {
 			return [__(doc.status), "green", "status,=," + doc.status];
@@ -12,6 +17,8 @@ frappe.listview_settings['Workday'] = {
 
 	onload: function(list_view) {
 		let me = this;
+		me.list_view = list_view;
+
 		const months = moment.months();
 		list_view.page.add_inner_button(__("Process Workdays"), function() {
 			let dialog = new frappe.ui.Dialog({
@@ -24,12 +31,17 @@ frappe.listview_settings['Workday'] = {
 						return frappe.db.get_link_options('Employee', txt, {status: 'Active'});
 					},
 					onchange: function() {
+						// dialog.set_df_property("date_from", "value", '');
+						// dialog.set_df_property("date_to", "value", '');
+
+						dialog.set_df_property("unmarked_days", "value", 0);
 						dialog.set_df_property("unmarked_days", "hidden", 1);
-						dialog.set_df_property("exclude_holidays", "hidden", 1);
-						dialog.set_df_property("date_from", "value", '');
-						dialog.set_df_property("date_to", "value", '');
 						dialog.set_df_property("unmarked_days", "options", []);
+						dialog.set_df_property("exclude_holidays", "hidden", 1);
 						dialog.no_unmarked_days_left = false;
+						
+						console.log("Employee changed");
+						me.updateDayRangeOptions(dialog);
 					}
 				},
 				{
@@ -37,6 +49,10 @@ frappe.listview_settings['Workday'] = {
 					label: __('Start Date'),
 					fieldtype: 'Date',
 					reqd: 1,
+					onchange: function() {
+						console.log("Start date changed");
+						me.updateDayRangeOptions(dialog);
+					}
 				},
 				{
 					fieldname: 'date_to',
@@ -61,8 +77,42 @@ frappe.listview_settings['Workday'] = {
 								}
 							});
 						}
+	
+						console.log("End date changed");
+						me.updateDayRangeOptions(dialog);
 					}
-				},				
+				},
+				{
+					fieldname: 'useselected',
+					label: __('Recreate Selected Workdays'),
+					fieldtype: 'Check',
+					default: 0,
+					onchange: function(event) {
+						// dialog.fields_dict.useselected.get_value()
+						if (this.last_value == this.value) return;
+
+						dialog.set_df_property("date_from", "hidden", this.value);
+						dialog.set_df_property("date_from", "reqd", !this.value);
+						
+						dialog.set_df_property("date_to", "hidden", this.value);
+						dialog.set_df_property("date_to", "reqd", !this.value);
+
+						dialog.set_df_property("recreate", "hidden", this.value);
+						dialog.set_value("recreate", this.value);
+					}
+				},
+				{
+					fieldname: 'recreate',
+					label: __('Recreate Workdays'),
+					fieldtype: 'Check',
+					default: 0,
+					onchange: function() {
+						if (this.last_value == this.value) return;
+
+						console.log("Recreate workdays changed", this.value);
+						me.updateDayRangeOptions(dialog);
+					}
+				},
 				{
 					label: __("Toggle Days to process"),
 					fieldtype: "Check",
@@ -99,6 +149,8 @@ frappe.listview_settings['Workday'] = {
 								}
 							});
 						}
+						console.log("Exclude holidays changed", this.value);
+						me.updateDayRangeOptions(dialog);
 					}
 				},
 				{
@@ -252,10 +304,93 @@ frappe.listview_settings['Workday'] = {
 			});
 			dialog.$wrapper.find('.btn-modal-primary').removeClass('btn-primary').addClass('btn-dark');
 			dialog.show();
+
+			if (!list_view.get_checked_items().length)
+				dialog.set_df_property("useselected", "read_only", 1);
+
 		});
 		list_view.page.change_inner_button_type('Process Workdays',null, 'dark');
+
 	},
-	get_day_range_options: function(employee, from_day, to_day) {
+	updateLabels: function(dialog) {
+		dialog.set_df_property("useselected", "label", __('Recreate Selected Workdays') + ( this.existingDays && " (" + this.existingDays + ")" || ""));
+		dialog.set_df_property("recreate", "label", __('Recreate Workdays') + ( this.existingDays && " (" + this.existingDays + ")" || ""));
+		dialog.set_df_property("toggle_days", "label", __("Toggle Days to process") + ( this.newDays && " (" + this.newDays + ")" || ""));
+	},
+	updateDayRangeOptions: function(dialog) {
+
+		if (!dialog.fields_dict.employee.value) {
+			return;
+		}
+
+		if (dialog.fields_dict.useselected.value) {
+			// there is a global cur_list item, because frappe only have one main list view at a time
+			// but i dont like this behave so we will use the list_view object from this class
+			const selectedWorkdays = this.list_view.get_checked_items()
+			let useWorkdays = [];
+			if ("log_date" in selectedWorkdays[0] && "employee" in selectedWorkdays[0]) {
+				useWorkdays = selectedWorkdays.filter((e) => e.employee == dialog.fields_dict.employee.value)
+			} else {
+				useWorkdays = selectedWorkdays
+			}
+
+			console.log("only local", useWorkdays);
+			var existingDays = 0;
+			var options = [];
+			for (var i in useWorkdays) {
+				const el = useWorkdays[i];
+				options.push({
+					"label": el.log_date,
+					"value": el.log_date,
+					"checked": 1
+				});
+				existingDays++;
+			}
+				
+			this.existingDays = existingDays;
+			this.newDays = 0;
+
+			dialog.set_df_property("unmarked_days", "options", options);
+			dialog.no_unmarked_days_left = false;
+			this.updateLabels(dialog);
+
+			// else get dates from server if not in list of selected workdays
+			return;
+		}
+
+		if (!dialog.fields_dict.date_from.value || !dialog.fields_dict.date_to.value) {
+			return;
+		}
+		if (moment(dialog.fields_dict.date_from.value).isAfter(dialog.fields_dict.date_to.value)) {
+			frappe.throw(__("Start date cannot be after end date"));
+		}
+		if (this.reqDayRange) {
+			console.log("Already fetching day range");
+			return;
+		}
+		this.reqDayRange = true;
+
+		me = this;
+		this.get_day_range_options(
+			dialog.fields_dict.employee.value,
+			dialog.fields_dict.date_from.value,
+			dialog.fields_dict.date_to.value,
+			dialog.fields_dict.recreate.value
+		).then(options => {
+			if (options.length > 0) {
+				// dialog.set_df_property("unmarked_days", "hidden", 1);
+				dialog.set_df_property("unmarked_days", "options", options);
+				dialog.no_unmarked_days_left = false;
+			} else {
+				dialog.set_df_property("unmarked_days", "options", []);
+				dialog.no_unmarked_days_left = true;
+			}
+			me.updateLabels(dialog);
+			me.reqDayRange = false;
+		});
+	},
+	get_day_range_options: function(employee, from_day, to_day, recreate) {
+		me = this;
 		return new Promise(resolve => {
 			frappe.call({				
 				method: 'hr_addon.hr_addon.doctype.workday.workday.get_unmarked_range',
@@ -263,19 +398,30 @@ frappe.listview_settings['Workday'] = {
 				args: {
 					employee: employee,
 					from_day: from_day,
-					to_day: to_day
+					to_day: to_day,
+					recreate: recreate
 				}
 			}).then(r => {
+				var existingDays = 0;
+				var newDays = 0;
 				var options = [];
 				for (var d in r.message) {
-					var momentObj = moment(r.message[d], 'YYYY-MM-DD');
+					const [datePart, literal] = r.message[d].split(" ", 2);
+					var momentObj = moment(datePart, 'YYYY-MM-DD');
 					var date = momentObj.format('DD-MM-YYYY');
 					options.push({
-						"label": date,
-						"value": r.message[d],
+						"label": date + (literal ? " " + literal : ""),
+						"value": datePart,
 						"checked": 1
 					});
+					if (literal) {
+						existingDays++;
+					} else {
+						newDays++;
+					}
 				}
+				me.existingDays = existingDays;
+				me.newDays = newDays;
 				resolve(options);
 			});
 		});
