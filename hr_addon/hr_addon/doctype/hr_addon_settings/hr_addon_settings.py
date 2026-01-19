@@ -20,8 +20,13 @@ class HRAddonSettings(Document):
 		if old_doc:
 			old_file_name = old_doc.name_of_calendar_export_ics_file
 			if old_file_name != self.name_of_calendar_export_ics_file:
+<<<<<<< HEAD
 				if os.path.exists("{}/public/files/{}.ics".format(frappe.utils.get_site_path(), old_file_name)):
 					os.remove("{}/public/files/{}.ics".format(frappe.utils.get_site_path(), old_file_name))
+=======
+                if os.path.exists("{}/public/files/{}.ics".format(frappe.utils.get_site_path(), old_file_name)):
+				    os.remove("{}/public/files/{}.ics".format(frappe.utils.get_site_path(), old_file_name))
+>>>>>>> a7714af (fix. exists ics, upd. report cols)
 
 		# remove also the Urlaubskalender.ics, if exist
 		if os.path.exists("{}/public/files/Urlaubskalender.ics".format(frappe.utils.get_site_path())):
