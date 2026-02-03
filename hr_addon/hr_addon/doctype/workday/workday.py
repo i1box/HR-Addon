@@ -600,7 +600,7 @@ def date_is_in_holiday_list(employee, date):
 		.select(Holiday.holiday_date, Holiday.weekly_off, Holiday.description)
 		.where(Holiday.parent == holiday_list)
 		.where(Holiday.holiday_date == getdate(date))
-	).run()
+	).run(as_dict=True)
 
 	return holidays if len(holidays) > 0 else False
 
@@ -885,7 +885,8 @@ def bulk_process_workdays(data,flag):
 		# Generate unmarked days for the selected employees and date range
 		all_unmarked_days = set()
 		for emp in employee_list:
-			unmarked_for_emp = get_unmarked_range(emp, data.date_from, data.date_to)
+			unmarked_for_emp = get_unmarked_range(emp, data.date_from, data.date_to, recreate = data.recreate or 0)
+			unmarked_for_emp = [s.replace(" (Recreate)", "") for s in unmarked_for_emp]
 			all_unmarked_days.update(unmarked_for_emp)
 		
 		data.unmarked_days = sorted(list(all_unmarked_days))
@@ -961,7 +962,7 @@ def bulk_process_workdays(data,flag):
 				creation_log.checkins_processed = len(employee_checkins) if len(employee_checkins) % 2 == 0 else 0
 				
 				# Check if holiday or leave
-				creation_log.is_holiday = date_is_in_holiday_list(emp, date)
+				creation_log.is_holiday = True if date_is_in_holiday_list(emp, date) else False
 				
 				leave_filters = {
 					"employee": emp,
@@ -978,7 +979,7 @@ def bulk_process_workdays(data,flag):
 				workday = frappe.db.exists('Workday', {'employee': emp, 'log_date': getdate(date)})
 				if workday and data.recreate:
 					if flag == "Create workday":
-						frappe.delete_doc("Workday", workday)
+						delete_workday_with_links(workday)
 						workday = None
 
 				if not workday:
@@ -998,8 +999,9 @@ def bulk_process_workdays(data,flag):
 				all_missing_dates.append(getdate(date))
 			
 				# Save creation log
-				creation_log.insert(ignore_permissions=True)
-				frappe.db.commit()
+				if flag == "Create workday":
+					creation_log.insert(ignore_permissions=True)
+					frappe.db.commit()
 
 			except Exception as e:
 				error_trace = traceback.format_exc()
@@ -1037,6 +1039,16 @@ def bulk_process_workdays(data,flag):
 		"flag":flag
 	}
 
+def delete_workday_with_links(workday):
+    linked_doctypes = ["Workday Creation Log"]
+
+    for dt in linked_doctypes:
+        names = frappe.get_all(dt, filters={"workday": workday}, pluck="name")
+        for name in names:
+            frappe.delete_doc(dt, name)
+
+    frappe.delete_doc("Workday", workday)
+
 @frappe.whitelist()
 def recreate_workday(employee, date):
 	"""recreate workday for employee and date"""
@@ -1048,7 +1060,7 @@ def recreate_workday(employee, date):
 	workday = frappe.db.exists('Workday', {'employee': employee,'log_date': getdate(date)})
 	try:
 		if workday:
-			frappe.delete_doc("Workday", workday)
+			delete_workday_with_links(workday)
 
 		workday = frappe.new_doc("Workday")
 		workday.employee = employee

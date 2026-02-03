@@ -188,11 +188,7 @@ frappe.query_reports["Work Hour Report"] = {
 		}
 		if (column.fieldname == "actual_working_seconds" ) {
 			if(value < 0) {
-<<<<<<< HEAD
-				value = "<span style='color:red'>" +'-' + hitt(value ,true) + "</span>";
-=======
-				value = "<span style='color:red;" + bg + "'>" + hitt(value) + "</span>";
->>>>>>> 699ce2f (upd. autom. update workday)
+				value = "<span style='color:red;" + bg + "'>" +"-"+ hitt(value) + "</span>";
 			}
 			else if(value > 0){
 				value = "<span style='color:green'>" + hitt(value) + "</span>";
@@ -220,12 +216,7 @@ frappe.query_reports["Work Hour Report"] = {
 		}
 		if (column.fieldname == "actual_diff_log" ) {
 			if(value < 0) {
-<<<<<<< HEAD
-				// value = "<span style='color:#FF8C00'>" + hitt(value,true) + "</span>";
-				value = "<span style='color:red'>" +"-"+ hitt(value,true) + "</span>";
-=======
-				value = "<div style='color:#FF8C00;" + bg + "'>" + hitt(value,true) + "</div>";
->>>>>>> 699ce2f (upd. autom. update workday)
+				value = "<div style='color:red;" + bg + "'>" +"-"+ hitt(value,true) + "</div>";
 			}
 			else if(value > 0){
 				value = "<span style='color:blue'>" + hitt(value,true) + "</span>";
